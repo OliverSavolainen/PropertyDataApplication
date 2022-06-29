@@ -30,10 +30,12 @@ class LoadDatabase {
 
                 Elements ads = doc.select(".swiper-gallery-view");
                 for (Element ad : ads) {
+                    String apartmentURL = ad.attr("data-object-url");
                     RentApartment rentApartment = new RentApartment();
                     Document adPage;
+
                     try {
-                        adPage = Jsoup.connect(ad.attr("data-object-url")).userAgent("Chrome").get();
+                        adPage = Jsoup.connect(apartmentURL).userAgent("Chrome").get();
                     } catch (IOException e) {
                         log.error(e.getMessage());
                         continue;
@@ -46,6 +48,7 @@ class LoadDatabase {
                             break;
                         }
                     }
+                    rentApartment.setURL(apartmentURL);
                     rentApartment.setPrice(Float.parseFloat(adPage.select(".object-price").get(0).text().split(" €")[0].replace(" ", "")));
                     //rentApartment.setDescription(adPage.select(".object-article-body").get(0).text().split(" Võta")[0]);
                     Element apartmentTable = adPage.select(".table-lined").last();
@@ -76,3 +79,4 @@ class LoadDatabase {
         };
     }
 }
+

@@ -32,16 +32,4 @@ public class RentApartmentRepositoryTests {
 	@Autowired
 	private TestEntityManager entityManager;
 
-	@Autowired
-	private RentApartmentRepository apartmentRepository;
-
-	@Test
-	public void testFindByAddress() {
-		RentApartment rentApartment = new RentApartment();
-		entityManager.persist(rentApartment);
-
-		List<RentApartment> findByAddress = apartmentRepository.findByAddress("");
-
-		assertThat(findByAddress).extracting(RentApartment::getAddress).containsOnly(rentApartment.getAddress());
-	}
 }

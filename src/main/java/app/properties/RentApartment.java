@@ -17,6 +17,7 @@ public class RentApartment implements Property {
     private Integer renovationYear;
     private String energyLabel;
     private int floor;
+    private String URL;
 
     public RentApartment() {
     }
@@ -101,7 +102,15 @@ public class RentApartment implements Property {
         this.floor = floor;
     }
 
-    public RentApartment(String address, float size, String propertyCondition, Integer bedrooms, Integer rooms, float price, Integer renovationYear, String energyLabel, int floor) {
+    public String getURL() {
+        return URL;
+    }
+
+    public void setURL(String URL) {
+        this.URL = URL;
+    }
+
+    public RentApartment(String address, float size, String propertyCondition, Integer bedrooms, Integer rooms, float price, Integer renovationYear, String energyLabel, int floor, String url) {
         this.address = address;
         this.size = size;
         this.propertyCondition = propertyCondition;
@@ -111,6 +120,7 @@ public class RentApartment implements Property {
         this.renovationYear = renovationYear;
         this.energyLabel = energyLabel;
         this.floor = floor;
+        URL = url;
     }
 
     public String toString() {
