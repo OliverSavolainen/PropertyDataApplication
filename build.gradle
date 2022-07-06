@@ -17,9 +17,10 @@ dependencies {
     implementation 'javax.mail:javax.mail-api:1.6.2'
     implementation 'javax.activation:activation:1.1.1'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'junit:junit:4.13.1'
+    implementation 'junit:junit:4.13.2'
+    implementation 'org.springframework.boot:spring-boot-starter-hateoas'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
     runtimeOnly 'mysql:mysql-connector-java'
 }
 

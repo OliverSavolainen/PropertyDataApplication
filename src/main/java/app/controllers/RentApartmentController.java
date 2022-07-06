@@ -1,29 +1,63 @@
 package app.controllers;
 
+import app.RentApartmentModelAssembler;
+import app.RentApartmentNotFoundException;
 import app.filters.*;
 import app.properties.RentApartment;
 import app.repositories.RentApartmentRepository;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
-@Controller
-@RequestMapping(path = "/filtered")
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
+@RestController
 public class RentApartmentController {
-
     private final RentApartmentRepository repository;
+    private final RentApartmentModelAssembler assembler;
 
-    public RentApartmentController(RentApartmentRepository repository) {
+    public RentApartmentController(RentApartmentRepository repository, RentApartmentModelAssembler assembler) {
         this.repository = repository;
+        this.assembler = assembler;
+    }
+
+    @GetMapping("/rentApartments")
+    public CollectionModel<EntityModel<RentApartment>> all() {
+        List<EntityModel<RentApartment>> rentApartments = repository.findAll().stream() //
+                .map(assembler::toModel) //
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(rentApartments, //
+                linkTo(methodOn(RentApartmentController.class).all()).withSelfRel());
+    }
+
+    @GetMapping("/rentApartments/{id}")
+    public EntityModel<RentApartment> one(@PathVariable Long id) throws RentApartmentNotFoundException {
+        RentApartment rentApartment = repository.findById(id) //
+                .orElseThrow(() -> new RentApartmentNotFoundException(id));
+
+        return assembler.toModel(rentApartment);
+    }
+
+    @PostMapping("/rentApartments")
+    ResponseEntity<EntityModel<RentApartment>> newRentApartment(@RequestBody RentApartment rentApartment) throws RentApartmentNotFoundException {
+        RentApartment newRentApartment = repository.save(rentApartment);
+
+        return ResponseEntity //
+                .created(linkTo(methodOn(RentApartmentController.class).one(newRentApartment.getId())).toUri()) //
+                .body(assembler.toModel(newRentApartment));
     }
 
 
     @GetMapping(path = "/filtered")
-    public @ResponseBody List<RentApartment> getFilteredApartments(OverallFilter overallFilter) throws Exception {
+    public CollectionModel<EntityModel<RentApartment>> getFilteredApartments(@RequestBody OverallFilter overallFilter) throws Exception {
         List<RentApartment> currentList = repository.findAll();
         integerValueFilter(currentList, overallFilter.getFloorFilter(), "floor");
         stringValueFilter(currentList, overallFilter.getAddressFilter(), "address");
@@ -35,7 +69,10 @@ public class RentApartmentController {
         stringValueFilter(currentList, overallFilter.getConditionFilter(), "condition");
         integerValueFilter(currentList, overallFilter.getRenovationYearFilter(), "year");
 
-        return currentList;
+        List<EntityModel<RentApartment>> filtered = currentList.stream() //
+                .map(assembler::toModel).toList();
+
+        return CollectionModel.of(filtered);
     }
 
     private void floatValueFilter(List<RentApartment> currentList, FilterPart filterPart, String comparable) throws Exception {

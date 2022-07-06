@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package properties.example.accessingdatajpa;
+package app;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

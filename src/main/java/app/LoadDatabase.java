@@ -25,7 +25,9 @@ class LoadDatabase {
         return args -> {
             String lastURL = "";
             String newURL = "https://www.kv.ee/?act=search.simple&deal_type=2&county=12&search_type=new&parish=1063";
-            while (!lastURL.equals(newURL)) {
+            int j = 0;
+            //!lastURL.equals(newURL)
+            while (j == 0) {
                 Document doc = Jsoup.connect(newURL).userAgent("Chrome").get();
 
                 Elements ads = doc.select(".swiper-gallery-view");
@@ -75,6 +77,7 @@ class LoadDatabase {
                 if (nextPage != null) newURL = "https://www.kv.ee/" + nextPage.attr("href");
                 else break;
                 log.info(newURL);
+                j++;
             }
         };
     }
