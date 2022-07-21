@@ -1,8 +1,10 @@
-package app;
+package app.services;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
+import app.PropertyDataApplication;
 import app.controllers.RentApartmentController;
+import app.exceptions.RentApartmentNotFoundException;
 import app.properties.RentApartment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

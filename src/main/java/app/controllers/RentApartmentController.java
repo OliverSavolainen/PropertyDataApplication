@@ -1,18 +1,18 @@
 package app.controllers;
 
-import app.RentApartmentModelAssembler;
-import app.RentApartmentNotFoundException;
-import app.filters.*;
+import app.exceptions.RentApartmentNotFoundException;
+import app.filters.FilterPart;
+import app.filters.OverallFilter;
 import app.properties.RentApartment;
 import app.repositories.RentApartmentRepository;
+import app.services.RentApartmentModelAssembler;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
@@ -28,7 +28,7 @@ public class RentApartmentController {
         this.assembler = assembler;
     }
 
-    @GetMapping("/rentApartments")
+    @GetMapping("/rentapartments")
     public CollectionModel<EntityModel<RentApartment>> all() {
         List<EntityModel<RentApartment>> rentApartments = repository.findAll().stream() //
                 .map(assembler::toModel) //
@@ -38,7 +38,7 @@ public class RentApartmentController {
                 linkTo(methodOn(RentApartmentController.class).all()).withSelfRel());
     }
 
-    @GetMapping("/rentApartments/{id}")
+    @GetMapping("/rentapartments/{id}")
     public EntityModel<RentApartment> one(@PathVariable Long id) throws RentApartmentNotFoundException {
         RentApartment rentApartment = repository.findById(id) //
                 .orElseThrow(() -> new RentApartmentNotFoundException(id));
@@ -46,7 +46,7 @@ public class RentApartmentController {
         return assembler.toModel(rentApartment);
     }
 
-    @PostMapping("/rentApartments")
+    @PostMapping("/rentapartments")
     ResponseEntity<EntityModel<RentApartment>> newRentApartment(@RequestBody RentApartment rentApartment) throws RentApartmentNotFoundException {
         RentApartment newRentApartment = repository.save(rentApartment);
 
@@ -58,6 +58,7 @@ public class RentApartmentController {
 
     @GetMapping(path = "/filtered")
     public CollectionModel<EntityModel<RentApartment>> getFilteredApartments(@RequestBody OverallFilter overallFilter) throws Exception {
+        if (overallFilter == null) return all();
         List<RentApartment> currentList = repository.findAll();
         integerValueFilter(currentList, overallFilter.getFloorFilter(), "floor");
         stringValueFilter(currentList, overallFilter.getAddressFilter(), "address");
@@ -76,94 +77,103 @@ public class RentApartmentController {
     }
 
     private void floatValueFilter(List<RentApartment> currentList, FilterPart filterPart, String comparable) throws Exception {
-        if (filterPart != null) {
+        List<RentApartment> filtered = new ArrayList<>();
+        if (filterPart.getComparison() != null && filterPart.getValue() != null) {
             switch (filterPart.getComparison()) {
                 case "more" -> {
-                    for (int i = 0; i < currentList.size(); i++) {
-                        Float value = getComparatorFloat(currentList.get(i), comparable);
-                        if (value == null || value <= (Float) filterPart.getValue()) {
-                            RentApartment removed = currentList.remove(i);
+                    for (RentApartment rentApartment : currentList) {
+                        Float value = getComparatorFloat(rentApartment, comparable);
+                        if (value != null && value > (Float) filterPart.getValue()) {
+                            filtered.add(rentApartment);
                         }
                     }
                 }
                 case "less" -> {
-                    for (int i = 0; i < currentList.size(); i++) {
-                        Float value = getComparatorFloat(currentList.get(i), comparable);
-                        if (value == null || value >= (Float) filterPart.getValue()) {
-                            RentApartment removed = currentList.remove(i);
+                    for (RentApartment rentApartment : currentList) {
+                        Float value = getComparatorFloat(rentApartment, comparable);
+                        if (value != null && value < (Float) filterPart.getValue()) {
+                            filtered.add(rentApartment);
                         }
                     }
                 }
                 case "equal" -> {
-                    for (int i = 0; i < currentList.size(); i++) {
-                        Float value = getComparatorFloat(currentList.get(i), comparable);
-                        if (value == null || !Objects.equals(value, filterPart.getValue())) {
-                            RentApartment removed = currentList.remove(i);
+                    for (RentApartment rentApartment : currentList) {
+                        Float value = getComparatorFloat(rentApartment, comparable);
+                        if (value != null && value == filterPart.getValue()) {
+                            filtered.add(rentApartment);
                         }
                     }
                 }
                 default -> {
                 }
             }
+            currentList.clear();
+            currentList.addAll(filtered);
         }
     }
 
     private void stringValueFilter(List<RentApartment> currentList, FilterPart filterPart, String comparable) throws Exception {
-        if (filterPart != null) {
+        List<RentApartment> filtered = new ArrayList<>();
+        if (filterPart.getComparison() != null && filterPart.getValue() != null) {
             switch (filterPart.getComparison()) {
                 case "contains" -> {
-                    for (int i = 0; i < currentList.size(); i++) {
-                        String value = getComparatorString(currentList.get(i), comparable);
-                        String apartmentsTextValue = (String) filterPart.getValue();
-                        if (value == null || !apartmentsTextValue.contains(value)) {
-                            RentApartment removed = currentList.remove(i);
+                    for (RentApartment rentApartment : currentList) {
+                        String value = getComparatorString(rentApartment, comparable);
+                        String filtersTextValue = (String) filterPart.getValue();
+                        if (value != null && value.contains(filtersTextValue)) {
+                            filtered.add(rentApartment);
                         }
                     }
                 }
                 case "equal" -> {
-                    for (int i = 0; i < currentList.size(); i++) {
-                        String value = getComparatorString(currentList.get(i), comparable);
-                        if (value == null || !Objects.equals(value, filterPart.getValue())) {
-                            RentApartment removed = currentList.remove(i);
+                    for (RentApartment rentApartment : currentList) {
+                        String value = getComparatorString(rentApartment, comparable);
+                        if (value != null && value.equals(filterPart.getValue())) {
+                            filtered.add(rentApartment);
                         }
                     }
                 }
                 default -> {
                 }
             }
+            currentList.clear();
+            currentList.addAll(filtered);
         }
     }
 
     private void integerValueFilter(List<RentApartment> currentList, FilterPart filterPart, String comparable) throws Exception {
-        if (filterPart != null) {
+        List<RentApartment> filtered = new ArrayList<>();
+        if (filterPart.getComparison() != null && filterPart.getValue() != null) {
             switch (filterPart.getComparison()) {
                 case "more" -> {
-                    for (int i = 0; i < currentList.size(); i++) {
-                        Integer value = getComparatorInteger(currentList.get(i), comparable);
-                        if (value == null || value <= (Integer) filterPart.getValue()) {
-                            RentApartment removed = currentList.remove(i);
+                    for (RentApartment rentApartment : currentList) {
+                        Integer value = getComparatorInteger(rentApartment, comparable);
+                        if (value != null && value > (Integer) filterPart.getValue()) {
+                            filtered.add(rentApartment);
                         }
                     }
                 }
                 case "less" -> {
-                    for (int i = 0; i < currentList.size(); i++) {
-                        Integer value = getComparatorInteger(currentList.get(i), comparable);
-                        if (value == null || value >= (Integer) filterPart.getValue()) {
-                            RentApartment removed = currentList.remove(i);
+                    for (RentApartment rentApartment : currentList) {
+                        Integer value = getComparatorInteger(rentApartment, comparable);
+                        if (value != null && value < (Integer) filterPart.getValue()) {
+                            filtered.add(rentApartment);
                         }
                     }
                 }
                 case "equal" -> {
-                    for (int i = 0; i < currentList.size(); i++) {
-                        Integer value = getComparatorInteger(currentList.get(i), comparable);
-                        if (value == null || !Objects.equals(value, filterPart.getValue())) {
-                            RentApartment removed = currentList.remove(i);
+                    for (RentApartment rentApartment : currentList) {
+                        Integer value = getComparatorInteger(rentApartment, comparable);
+                        if (value != null && value == filterPart.getValue()) {
+                            filtered.add(rentApartment);
                         }
                     }
                 }
                 default -> {
                 }
             }
+            currentList.clear();
+            currentList.addAll(filtered);
         }
     }
 

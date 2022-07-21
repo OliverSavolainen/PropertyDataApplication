@@ -22,7 +22,7 @@ class LoadDatabase {
     @Bean
     CommandLineRunner initDatabase(RentApartmentRepository repository) {
 
-        return args -> {
+        return args -> {/*
             String lastURL = "";
             String newURL = "https://www.kv.ee/?act=search.simple&deal_type=2&county=12&search_type=new&parish=1063";
             int j = 0;
@@ -77,8 +77,8 @@ class LoadDatabase {
                 if (nextPage != null) newURL = "https://www.kv.ee/" + nextPage.attr("href");
                 else break;
                 log.info(newURL);
-                j++;
-            }
+                j++;*/
+            repository.save(new RentApartment());
         };
     }
 }
