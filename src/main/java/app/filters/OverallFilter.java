@@ -1,5 +1,8 @@
 package app.filters;
 
+/**
+ * OverallFilter class, which includes all specific filters to properties of apartments
+ */
 public class OverallFilter {
     private AddressFilter addressFilter;
     private BedroomsFilter bedroomsFilter;

@@ -2,6 +2,9 @@ package app.properties;
 
 import javax.persistence.*;
 
+/**
+ * Entity of a RentApartment, properties are according to the ones given by kv.ee
+ */
 @Entity
 public class RentApartment implements Property {
 

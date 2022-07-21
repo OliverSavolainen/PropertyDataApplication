@@ -2,18 +2,15 @@ package app;
 
 import app.properties.RentApartment;
 import app.repositories.RentApartmentRepository;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.IOException;
-
+/**
+ * Configuration class for scraping data from kv.ee and loading it into the database when application is started
+ */
 @Configuration
 class LoadDatabase {
 

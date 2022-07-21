@@ -1,5 +1,8 @@
 package app.notifications;
 
+import app.exceptions.SendingFailedException;
+import app.filters.FilterLogic;
+import app.filters.OverallFilter;
 import app.properties.RentApartment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,52 +11,64 @@ import java.util.*;
 import javax.mail.*;
 import javax.mail.internet.*;
 
+/**
+ * Class for sending an email notification of apartments that are suitable through the filter
+ */
 public class SendEmail {
     private static final Logger log = LoggerFactory.getLogger(SendEmail.class);
+    private final String from;
+    private final String recipient;
+    private final String password;
+    private final OverallFilter overallFilter;
 
-    public void send(String from, String recipient, List<RentApartment> suitableApartments) {
+    public SendEmail(String from, String recipient, String password, OverallFilter overallFilter) {
+        this.from = from;
+        this.recipient = recipient;
+        this.password = password;
+        this.overallFilter = overallFilter;
+    }
 
-        // Sender's email ID needs to be mentioned
+    /**
+     * Method for sending the email, currently by gmail
+     * @param apartments list of apartments that are filtered
+     * @return all suitable apartments
+     */
+    public List<RentApartment> sendNotification(List<RentApartment> apartments) throws Exception {
+        FilterLogic filterLogic = new FilterLogic(overallFilter, apartments);
 
-        // Assuming you are sending email from localhost
-        String host = "localhost";
+        Properties props = new Properties();
+        props.put("mail.smtp.host", "smtp.gmail.com");
+        props.put("mail.smtp.socketFactory.port", "465");
+        props.put("mail.smtp.socketFactory.class",
+                "javax.net.ssl.SSLSocketFactory");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.port", "465");
 
-        // Get system properties
-        Properties properties = System.getProperties();
-
-        // Setup mail server
-        properties.setProperty("mail.smtp.host", host);
-
-        // Get the default Session object.
-        Session session = Session.getDefaultInstance(properties);
-
+        Session session = Session.getDefaultInstance(props,
+                new javax.mail.Authenticator() {
+                    protected PasswordAuthentication getPasswordAuthentication() {
+                        return new PasswordAuthentication(from, password);
+                    }
+                });
         try {
-            // Create a default MimeMessage object.
             MimeMessage message = new MimeMessage(session);
-
-            // Set From: header field of the header.
-            message.setFrom(new InternetAddress(from));
-
-            // Set To: header field of the header.
             message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient));
-
-            // Set Subject: header field
-            message.setSubject("Suitable apartments according to your query!");
+            message.setSubject("Here are the apartments your filter found!");
 
             StringBuilder fullText = new StringBuilder();
+            List<RentApartment> suitableApartments = filterLogic.filterAll();
             for (RentApartment suitableApartment : suitableApartments) {
                 fullText.append(suitableApartment.toString()).append("\n");
                 fullText.append("URL: ").append(suitableApartment.getURL()).append("\n").append("\n");
             }
-
-            // Now set the actual message
             message.setText(String.valueOf(fullText));
 
-            // Send message
             Transport.send(message);
             log.info("Email sent");
+            return suitableApartments;
         } catch (MessagingException mex) {
             log.error(mex.toString());
+            throw new SendingFailedException();
         }
     }
 }

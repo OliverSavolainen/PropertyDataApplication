@@ -1,32 +1,36 @@
 package app.controllers;
 
+import app.exceptions.ContentNotFoundException;
 import app.exceptions.RentApartmentNotFoundException;
-import app.filters.FilterPart;
+import app.filters.FilterLogic;
 import app.filters.OverallFilter;
+import app.notifications.SendEmail;
 import app.properties.RentApartment;
 import app.repositories.RentApartmentRepository;
 import app.services.RentApartmentModelAssembler;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+/**
+ * REST controller that handles showing all, 1 selected or filtered apartments, also has methods for putting in a new entity to the repository and sending an email notification
+ */
 @RestController
 public class RentApartmentController {
-    private final RentApartmentRepository repository;
-    private final RentApartmentModelAssembler assembler;
+    @Autowired
+    private RentApartmentRepository repository;
+    @Autowired
+    private RentApartmentModelAssembler assembler;
 
-    public RentApartmentController(RentApartmentRepository repository, RentApartmentModelAssembler assembler) {
-        this.repository = repository;
-        this.assembler = assembler;
-    }
+
 
     @GetMapping("/rentapartments")
     public CollectionModel<EntityModel<RentApartment>> all() {
@@ -47,181 +51,39 @@ public class RentApartmentController {
     }
 
     @PostMapping("/rentapartments")
-    ResponseEntity<EntityModel<RentApartment>> newRentApartment(@RequestBody RentApartment rentApartment) throws RentApartmentNotFoundException {
-        RentApartment newRentApartment = repository.save(rentApartment);
+    ResponseEntity<EntityModel<RentApartment>> newRentApartment(@RequestBody RentApartment rentApartment) throws RentApartmentNotFoundException, ContentNotFoundException {
+        if (rentApartment != null) {
+            repository.save(rentApartment);
 
-        return ResponseEntity //
-                .created(linkTo(methodOn(RentApartmentController.class).one(newRentApartment.getId())).toUri()) //
-                .body(assembler.toModel(newRentApartment));
+            return ResponseEntity //
+                    .created(linkTo(methodOn(RentApartmentController.class).one(rentApartment.getId())).toUri()) //
+                    .body(assembler.toModel(rentApartment));
+        }
+        throw new ContentNotFoundException();
     }
 
 
     @GetMapping(path = "/filtered")
     public CollectionModel<EntityModel<RentApartment>> getFilteredApartments(@RequestBody OverallFilter overallFilter) throws Exception {
         if (overallFilter == null) return all();
-        List<RentApartment> currentList = repository.findAll();
-        integerValueFilter(currentList, overallFilter.getFloorFilter(), "floor");
-        stringValueFilter(currentList, overallFilter.getAddressFilter(), "address");
-        stringValueFilter(currentList, overallFilter.getEnergyLabelFilter(), "energy");
-        floatValueFilter(currentList, overallFilter.getSizeFilter(), "size");
-        floatValueFilter(currentList, overallFilter.getPriceFilter(), "price");
-        integerValueFilter(currentList, overallFilter.getRoomsFilter(), "rooms");
-        integerValueFilter(currentList, overallFilter.getBedroomsFilter(), "bedrooms");
-        stringValueFilter(currentList, overallFilter.getConditionFilter(), "condition");
-        integerValueFilter(currentList, overallFilter.getRenovationYearFilter(), "year");
+        FilterLogic filterLogic = new FilterLogic(overallFilter, repository.findAll());
 
-        List<EntityModel<RentApartment>> filtered = currentList.stream() //
+        List<EntityModel<RentApartment>> filtered = filterLogic.filterAll().stream() //
                 .map(assembler::toModel).toList();
 
         return CollectionModel.of(filtered);
     }
 
-    private void floatValueFilter(List<RentApartment> currentList, FilterPart filterPart, String comparable) throws Exception {
-        List<RentApartment> filtered = new ArrayList<>();
-        if (filterPart.getComparison() != null && filterPart.getValue() != null) {
-            switch (filterPart.getComparison()) {
-                case "more" -> {
-                    for (RentApartment rentApartment : currentList) {
-                        Float value = getComparatorFloat(rentApartment, comparable);
-                        if (value != null && value > (Float) filterPart.getValue()) {
-                            filtered.add(rentApartment);
-                        }
-                    }
-                }
-                case "less" -> {
-                    for (RentApartment rentApartment : currentList) {
-                        Float value = getComparatorFloat(rentApartment, comparable);
-                        if (value != null && value < (Float) filterPart.getValue()) {
-                            filtered.add(rentApartment);
-                        }
-                    }
-                }
-                case "equal" -> {
-                    for (RentApartment rentApartment : currentList) {
-                        Float value = getComparatorFloat(rentApartment, comparable);
-                        if (value != null && value == filterPart.getValue()) {
-                            filtered.add(rentApartment);
-                        }
-                    }
-                }
-                default -> {
-                }
-            }
-            currentList.clear();
-            currentList.addAll(filtered);
-        }
-    }
+    @GetMapping(path = "/filtered/send")
+    public CollectionModel<EntityModel<RentApartment>> sendFilteredApartments(@RequestBody SendEmail sendEmail) throws Exception {
+        if (sendEmail == null) return all();
 
-    private void stringValueFilter(List<RentApartment> currentList, FilterPart filterPart, String comparable) throws Exception {
-        List<RentApartment> filtered = new ArrayList<>();
-        if (filterPart.getComparison() != null && filterPart.getValue() != null) {
-            switch (filterPart.getComparison()) {
-                case "contains" -> {
-                    for (RentApartment rentApartment : currentList) {
-                        String value = getComparatorString(rentApartment, comparable);
-                        String filtersTextValue = (String) filterPart.getValue();
-                        if (value != null && value.contains(filtersTextValue)) {
-                            filtered.add(rentApartment);
-                        }
-                    }
-                }
-                case "equal" -> {
-                    for (RentApartment rentApartment : currentList) {
-                        String value = getComparatorString(rentApartment, comparable);
-                        if (value != null && value.equals(filterPart.getValue())) {
-                            filtered.add(rentApartment);
-                        }
-                    }
-                }
-                default -> {
-                }
-            }
-            currentList.clear();
-            currentList.addAll(filtered);
-        }
-    }
+        List<RentApartment> suitableApartments = sendEmail.sendNotification(repository.findAll());
+        List<EntityModel<RentApartment>> filtered = suitableApartments.stream() //
+                .map(assembler::toModel).toList();
 
-    private void integerValueFilter(List<RentApartment> currentList, FilterPart filterPart, String comparable) throws Exception {
-        List<RentApartment> filtered = new ArrayList<>();
-        if (filterPart.getComparison() != null && filterPart.getValue() != null) {
-            switch (filterPart.getComparison()) {
-                case "more" -> {
-                    for (RentApartment rentApartment : currentList) {
-                        Integer value = getComparatorInteger(rentApartment, comparable);
-                        if (value != null && value > (Integer) filterPart.getValue()) {
-                            filtered.add(rentApartment);
-                        }
-                    }
-                }
-                case "less" -> {
-                    for (RentApartment rentApartment : currentList) {
-                        Integer value = getComparatorInteger(rentApartment, comparable);
-                        if (value != null && value < (Integer) filterPart.getValue()) {
-                            filtered.add(rentApartment);
-                        }
-                    }
-                }
-                case "equal" -> {
-                    for (RentApartment rentApartment : currentList) {
-                        Integer value = getComparatorInteger(rentApartment, comparable);
-                        if (value != null && value == filterPart.getValue()) {
-                            filtered.add(rentApartment);
-                        }
-                    }
-                }
-                default -> {
-                }
-            }
-            currentList.clear();
-            currentList.addAll(filtered);
-        }
+        return CollectionModel.of(filtered);
     }
-
-    private Integer getComparatorInteger(RentApartment rentApartment, String comparable) throws Exception {
-        switch (comparable) {
-            case "rooms" -> {
-                return rentApartment.getRooms();
-            }
-            case "bedrooms" -> {
-                return rentApartment.getBedrooms();
-            }
-            case "year" -> {
-                return rentApartment.getRenovationYear();
-            }
-            case "floor" -> {
-                return rentApartment.getFloor();
-            }
-        }
-        throw new Exception("Wrong comparable");
-    }
-
-    private String getComparatorString(RentApartment rentApartment, String comparable) throws Exception {
-        switch (comparable) {
-            case "address" -> {
-                return rentApartment.getAddress();
-            }
-            case "condition" -> {
-                return rentApartment.getPropertyCondition();
-            }
-            case "energy" -> {
-                return rentApartment.getEnergyLabel();
-            }
-        }
-        throw new Exception("Wrong comparable");
-    }
-
-    private Float getComparatorFloat(RentApartment rentApartment, String comparable) throws Exception {
-        switch (comparable) {
-            case "price" -> {
-                return rentApartment.getPrice();
-            }
-            case "size" -> {
-                return rentApartment.getSize();
-            }
-        }
-        throw new Exception("Wrong comparable");
-    }
-
 
 }
 
