@@ -5,7 +5,9 @@ import app.properties.RentApartment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
@@ -14,15 +16,19 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest
+@SpringBootTest(classes = FilterLogic.class)
 public class FilterLogicTest {
 
     private final List<RentApartment> rentApartments = new ArrayList<>();
-    private final FilterLogic filterLogic = new FilterLogic(new OverallFilter(),rentApartments);
+    @MockBean
+    private OverallFilter overallFilter;
+    @Autowired
+    private FilterLogic filterLogic;
 
     @BeforeEach
     public void setUp() {
-        filterLogic.setOverallFilter(new OverallFilter());
+        filterLogic.setOverallFilter(overallFilter);
+        filterLogic.setCurrentList(rentApartments);
         RentApartment first = new RentApartment("Test",23,"Heas korras",1,2,400.0F,1999,"E",5,null);
         rentApartments.add(first);
     }
