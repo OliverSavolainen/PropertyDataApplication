@@ -52,7 +52,7 @@ public class RentApartmentControllerTests {
                 "}")).andDo(print()).andExpect(status().is(201));
     }
 
-    @Test
+    /*@Test
     void getOne() throws Exception {
         this.mvc.perform(get("/rentapartments/1")).andExpect(status().isNotFound());
         this.mvc.perform(post("/rentapartments").contentType(MediaType.APPLICATION_JSON).content("{\n" +
@@ -71,7 +71,7 @@ public class RentApartmentControllerTests {
 
         this.mvc.perform(get("/rentapartments/1")).andDo(print()).andExpect(status().isOk());
 
-    }
+    }*/
 
 
     @Test
